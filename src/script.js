@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("Static Website Loaded ✅");
-});
+function showAlert() {
+  alert("🚀 Jenkins + Docker Deployment Successful!");
+}
 
