@@ -1,0 +1,56 @@
+pipeline {
+  agent any
+  environment {
+    REGISTRY = 'docker.io'
+    DOCKERHUB_NAMESPACE = 'pavanimadhavarapu'
+    IMAGE_NAME = "${DOCKERHUB_NAMESPACE}/static-website"
+    DOCKERHUB_CRED = 'dockerhub-credentials-id'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        script {
+          def sha = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+          def branch = env.BRANCH_NAME ?: "local"
+          env.IMAGE_TAG = "${branch}-${sha}"
+          docker.build("${IMAGE_NAME}:${IMAGE_TAG}", ".")
+        }
+      }
+    }
+
+    stage('Push to Docker Hub') {
+      steps {
+        script {
+          docker.withRegistry("https://index.docker.io/v1/", "${DOCKERHUB_CRED}") {
+            sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+            sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
+            sh "docker push ${IMAGE_NAME}:latest"
+          }
+        }
+      }
+    }
+
+    stage('Deploy (Optional)') {
+      steps {
+        echo "Here you can add docker run or docker-compose on server"
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "✅ Static Website deployed successfully: ${IMAGE_NAME}:${IMAGE_TAG}"
+    }
+    failure {
+      echo "❌ Build failed"
+    }
+  }
+}
+
