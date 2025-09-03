@@ -4,24 +4,14 @@ pipeline {
     REGISTRY = 'docker.io'
     DOCKERHUB_NAMESPACE = 'pavanimadhavarapu'
     IMAGE_NAME = "${DOCKERHUB_NAMESPACE}/static-website"
+    IMAGE_TAG = "${BUILD_NUMBER}"    
     DOCKERHUB_CRED = 'dockerhub-credentials-id'
   }
 
   stages {
     stage('Checkout') {
       steps {
-        checkout scm
-      }
-    }
-
-    stage('Build Docker Image') {
-      steps {
-        script {
-          def sha = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-          def branch = env.BRANCH_NAME ?: "local"
-          env.IMAGE_TAG = "${branch}-${sha}"
-          docker.build("${IMAGE_NAME}:${IMAGE_TAG}", ".")
-        }
+        git branch: 'main', url: 'https://github.com/pavanimadhavarapu/staticwebsite.git'
       }
     }
 
@@ -29,8 +19,17 @@ pipeline {
       steps {
         script {
           docker.withRegistry("https://index.docker.io/v1/", "${DOCKERHUB_CRED}") {
-            sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+
+            sh """
+              docker rmi -f ${IMAGE_NAME}:${IMAGE_TAG} || true
+              docker rmi -f ${IMAGE_NAME}:latest || true
+            """
+
+            sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+
             sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
+
+            sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
             sh "docker push ${IMAGE_NAME}:latest"
           }
         }
@@ -40,19 +39,11 @@ pipeline {
     stage('Deploy (Optional)') {
       steps {
         script {
-      sh 'docker rm -f staticwebsite || true'
-      sh "docker run -d -p 8081:80 --name staticwebsite ${IMAGE_NAME}:${IMAGE_TAG}"
+          sh 'docker rm -f staticwebsite || true'
+
+          sh "docker run -d -p 8081:80 --name staticwebsite ${IMAGE_NAME}:${IMAGE_TAG}"
         }
       }
-    }
-  }
-
-  post {
-    success {
-      echo "✅ Static Website deployed successfully: ${IMAGE_NAME}:${IMAGE_TAG}"
-    }
-    failure {
-      echo "❌ Build failed"
     }
   }
 }
