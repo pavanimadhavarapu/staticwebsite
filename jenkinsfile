@@ -37,9 +37,10 @@ pipeline {
     }
     stage('Deploy Swarm Deploy') {
       steps {
-        sh "
+        sh '''
           docker service update --image ${IMAGE_NAME}:${IMAGE_TAG} ||\
           docker service create --name webservice -p 8081:80 --replicas 10 ${IMAGE_NAME}
+        '''
         }
       }
     stage('Deploy (Optional)') {
