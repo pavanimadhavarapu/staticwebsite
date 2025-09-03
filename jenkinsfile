@@ -39,7 +39,10 @@ pipeline {
 
     stage('Deploy (Optional)') {
       steps {
-        echo "Here you can add docker run or docker-compose on server"
+        script {
+      sh 'docker rm -f staticwebsite || true'
+      sh "docker run -d -p 8081:80 --name staticwebsite ${IMAGE_NAME}:${IMAGE_TAG}"
+        }
       }
     }
   }
