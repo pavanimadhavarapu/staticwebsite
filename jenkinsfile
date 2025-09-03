@@ -35,19 +35,13 @@ pipeline {
         }
       }
     }
-    stage('Deploy to Swarm with Replicas') {
-    steps {
-        sh '''
-            
-            docker service update --image ${IMAGE_NAME}:${IMAGE_TAG} --replicas ${REPLICAS} ${IMAGE_NAME}
-        
-           
-            docker service create --name ${IMAGE_NAME} --replicas ${REPLICAS} -p 8081:80 ${IMAGE_NAME}:${IMAGE_TAG}
-        
-        '''
-    }
-}
- 
+    stage('Deploy Swarm Deploy') {
+      steps {
+        sh "
+          docker service update --image ${IMAGE_NAME}:${IMAGE_TAG} ||\
+          docker service create --name webservice -p 8081:80 --replicas 10 ${IMAGE_NAME}
+        }
+      }
     stage('Deploy (Optional)') {
       steps {
         script {
