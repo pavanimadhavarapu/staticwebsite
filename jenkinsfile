@@ -1,11 +1,13 @@
 pipeline {
   agent any
+
   environment {
     REGISTRY = 'docker.io'
     DOCKERHUB_NAMESPACE = 'pavanimadhavarapu'
     IMAGE_NAME = "${DOCKERHUB_NAMESPACE}/static-website"
-    IMAGE_TAG = "${BUILD_NUMBER}"    
+    IMAGE_TAG = "${BUILD_NUMBER}"
     DOCKERHUB_CRED = 'dockerhub-credentials-id'
+    REPLICAS = "3"   // define number of replicas for Swarm
   }
 
   stages {
@@ -15,40 +17,48 @@ pipeline {
       }
     }
 
-    stage('Push to Docker Hub') {
+    stage('Build & Push to Docker Hub') {
       steps {
         script {
           docker.withRegistry("https://index.docker.io/v1/", "${DOCKERHUB_CRED}") {
-
             sh """
               docker rmi -f ${IMAGE_NAME}:${IMAGE_TAG} || true
               docker rmi -f ${IMAGE_NAME}:latest || true
+
+              docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+              docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
+
+              docker push ${IMAGE_NAME}:${IMAGE_TAG}
+              docker push ${IMAGE_NAME}:latest
             """
-
-            sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-
-            sh "docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest"
-
-            sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-            sh "docker push ${IMAGE_NAME}:latest"
           }
         }
       }
     }
-    stage('Deploy Swarm Deploy') {
-      steps {
-        sh '''
-          docker service update --image ${IMAGE_NAME}:${IMAGE_TAG} ||\
-          docker service create --name webservice -p 8081:80 --replicas 10 ${IMAGE_NAME}
-        '''
-        }
-      }
-    stage('Deploy (Optional)') {
+
+    stage('Deploy to Swarm with Replicas') {
       steps {
         script {
-          sh 'docker rm -f staticwebsite || true'
+          sh """
+            if docker service ls --format '{{.Name}}' | grep -q '^static-website$'; then
+              echo "Updating existing service..."
+              docker service update --image ${IMAGE_NAME}:${IMAGE_TAG} --replicas ${REPLICAS} static-website
+            else
+              echo "Creating new service..."
+              docker service create --name static-website --replicas ${REPLICAS} -p 8081:80 ${IMAGE_NAME}:${IMAGE_TAG}
+            fi
+          """
+        }
+      }
+    }
 
-          sh "docker run -d -p 8081:80 --name staticwebsite ${IMAGE_NAME}:${IMAGE_TAG}"
+    stage('Deploy as Standalone (Optional)') {
+      steps {
+        script {
+          sh """
+            docker rm -f staticwebsite || true
+            docker run -d -p 8082:80 --name staticwebsite ${IMAGE_NAME}:${IMAGE_TAG}
+          """
         }
       }
     }
