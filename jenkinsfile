@@ -7,7 +7,6 @@ pipeline {
     IMAGE_NAME = "${DOCKERHUB_NAMESPACE}/static-website"
     IMAGE_TAG = "${BUILD_NUMBER}"
     DOCKERHUB_CRED = 'dockerhub-credentials-id'
-    REPLICAS = "3"   // define number of replicas for Swarm
   }
 
   stages {
@@ -36,23 +35,7 @@ pipeline {
       }
     }
 
-    stage('Deploy to Swarm with Replicas') {
-      steps {
-        script {
-          sh """
-            if docker service ls --format '{{.Name}}' | grep -q '^static-website$'; then
-              echo "Updating existing service..."
-              docker service update --image ${IMAGE_NAME}:${IMAGE_TAG} --replicas ${REPLICAS} static-website
-            else
-              echo "Creating new service..."
-              docker service create --name static-website --replicas ${REPLICAS} -p 8081:80 ${IMAGE_NAME}:${IMAGE_TAG}
-            fi
-          """
-        }
-      }
-    }
-
-    stage('Deploy as Standalone (Optional)') {
+    stage('Deploy as Standalone') {
       steps {
         script {
           sh """
