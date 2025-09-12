@@ -4,7 +4,7 @@ pipeline {
   environment {
     REGISTRY = 'docker.io'
     DOCKERHUB_NAMESPACE = 'pavanimadhavarapu'
-    IMAGE_NAME = "${DOCKERHUB_NAMESPACE}/static-website"
+    IMAGE_NAME = "${DOCKERHUB_NAMESPACE}/staticwebsite"
     IMAGE_TAG = "${BUILD_NUMBER}"
     DOCKERHUB_CRED = 'dockerhub-credentials-id'
   }
